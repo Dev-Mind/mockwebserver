@@ -1,0 +1,20 @@
+= MockWebServer for Junit 5
+
+A scriptable web server for testing HTTP clients
+
+This project is a fork of the project https://github.com/square/okhttp/tree/master/mockwebserver[okhttp-mockwebserver]. I had to do that to usee this project (created by Square) in a project with Java >=8 and with Junit5. The rule `_MockWebServer_` is replaced by a Junit 5 extension `_MockWebServerExtension_`
+
+This project is managed by Dev-Mind but you can send push request or open issues
+
+
+
+== Motivation
+This library makes it easy to test that your app Does The Right Thing when it makes HTTP and HTTPS calls. It lets you specify which responses to return and then verify that requests were made as expected.
+
+Because it exercises your full HTTP stack, you can be confident that you're testing everything. You can even copy & paste HTTP responses from your real web server to create representative test cases. Or test that your code survives in awkward-to-reproduce situations like 500 errors or slow-loading responses.
+
+=== Example
+Use MockWebServerExtension the same way that you use other frameworks extensions like Spring:
+
+Here's a complete example:
+

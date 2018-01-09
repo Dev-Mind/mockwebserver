@@ -1,0 +1,37 @@
+buildscript {
+    ext {
+        junitPlatformVersion = '1.0.2'
+        junitVersion = '5.0.2'
+        okHttpVersion = '3.9.1'
+        bouncycastleVersion = '1.50'
+    }
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.junit.platform:junit-platform-gradle-plugin:${junitPlatformVersion}")
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: "org.junit.platform.gradle.plugin"
+
+group = 'com.devmind'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+
+dependencies {
+    compile("com.squareup.okhttp3:okhttp:${okHttpVersion}")
+    compile("com.squareup.okhttp3:okhttp-testing-support:${okHttpVersion}")
+    compile("org.bouncycastle:bcprov-jdk15on:${bouncycastleVersion}")
+    compile("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
+
+    testCompile("org.assertj:assertj-core:3.8.0")
+    testRuntime("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
+}
