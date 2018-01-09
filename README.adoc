@@ -2,7 +2,7 @@
 
 A scriptable web server for testing HTTP clients
 
-This project is a fork of the project https://github.com/square/okhttp/tree/master/mockwebserver[okhttp-mockwebserver]. I had to do that to use this project (created by https://squareup.com/[Square]) in a project with Java >=8 and with Junit5. The rule `_MockWebServer_` is replaced by a Junit 5 extension `_MockWebServerExtension_`
+This project is a fork of the project https://github.com/square/okhttp/tree/master/mockwebserver[okhttp-mockwebserver] (created by https://squareup.com/[Square]). This evolution targets any Java project with Java >=8 and with Juni t5. The rule `_MockWebServer_` is replaced by a Junit 5 extension `_MockWebServerExtension_`. This project exists because the initial one won't upgraded to Java 8 and Junit 5. 
 
 This project is managed by Dev-Mind but you can send push request or open issues
 
