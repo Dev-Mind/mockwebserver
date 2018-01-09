@@ -16,13 +16,12 @@
 package mockwebserver;
 
 import okhttp3.Headers;
-import okhttp3.HttpUrl;
 import okhttp3.internal.Util;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServerExtension;
 import okhttp3.mockwebserver.RecordedRequest;
 import okhttp3.mockwebserver.SocketPolicy;
-import org.assertj.core.api.Assertions;
+import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,25 +35,20 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.ProtocolException;
 import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.net.URLConnection;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ExtendWith(MockWebServerExtension.class)
 @DisplayName("Test MockWebServerExtension")
@@ -64,7 +58,7 @@ public final class MockWebServerTest {
 
     @Nested
     @DisplayName("Headers :")
-    class TestMockResponseHeader{
+    class TestMockResponseHeader {
         @Test
         @DisplayName("default mock response contains no header")
         public void defaultMockResponse() {
@@ -153,13 +147,14 @@ public final class MockWebServerTest {
 
     @Nested
     @DisplayName("Server :")
-    class TestServer{
+    class TestServer {
         @BeforeEach
-        public void setUp() throws Exception{
+        public void setUp() throws Exception {
             server.start();
         }
+
         @AfterEach
-        public void tearDown() throws Exception{
+        public void tearDown() throws Exception {
             server.shutdown();
         }
 
@@ -225,238 +220,244 @@ public final class MockWebServerTest {
             BufferedReader reader = new BufferedReader(new InputStreamReader(in));
             assertThat(reader.readLine()).isEqualTo("enqueued in the background");
         }
+
+        @Test
+        @DisplayName("should fail when non hexadecimal chunk size")
+        public void nonHexadecimalChunkSize() throws Exception {
+            server.enqueue(new MockResponse()
+                    .setBody("G\r\nxxxxxxxxxxxxxxxx\r\n0\r\n\r\n")
+                    .clearHeaders()
+                    .addHeader("Transfer-encoding: chunked"));
+
+            URLConnection connection = server.url("/").url().openConnection();
+            InputStream in = connection.getInputStream();
+
+            assertThatThrownBy(() -> in.read()).isExactlyInstanceOf(IOException.class);
+        }
+
+        @Test
+        @DisplayName("should fail for timeout")
+        public void responseTimeout() throws Exception {
+            server.enqueue(new MockResponse()
+                    .setBody("ABC")
+                    .clearHeaders()
+                    .addHeader("Content-Length: 4"));
+            server.enqueue(new MockResponse().setBody("DEF"));
+
+            URLConnection urlConnection = server.url("/").url().openConnection();
+            urlConnection.setReadTimeout(1000);
+            InputStream in = urlConnection.getInputStream();
+            assertThat(in.read()).isEqualTo('A');
+            assertThat(in.read()).isEqualTo('B');
+            assertThat(in.read()).isEqualTo('C');
+
+            // if Content-Length was accurate, this would return -1 immediately
+            assertThatThrownBy(() -> in.read()).isExactlyInstanceOf(SocketTimeoutException.class);
+
+            URLConnection urlConnection2 = server.url("/").url().openConnection();
+            InputStream in2 = urlConnection2.getInputStream();
+            assertThat(in2.read()).isEqualTo('D');
+            assertThat(in2.read()).isEqualTo('E');
+            assertThat(in2.read()).isEqualTo('F');
+            assertThat(in2.read()).isEqualTo(-1);
+
+            assertThat(server.takeRequest().getSequenceNumber()).isEqualTo(0);
+        }
+
+        @Test
+        @DisplayName("should disconect at start")
+        public void disconnectAtStart() throws Exception {
+            server.enqueue(new MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START));
+            server.enqueue(new MockResponse()); // The jdk's HttpUrlConnection is a bastard.
+            server.enqueue(new MockResponse());
+            try {
+                server.url("/a").url().openConnection().getInputStream();
+            }
+            catch (IOException expected) {
+            }
+            server.url("/b").url().openConnection().getInputStream(); // Should succeed.
+        }
+
+        @DisplayName("Throttle the request body by sleeping 500ms after every 3 bytes. With a 6-byte request, this should yield one sleep for a total delay of 500ms.")
+        @Test
+        public void throttleRequest() throws Exception {
+            server.enqueue(new MockResponse()
+                    .throttleBody(3, 500, TimeUnit.MILLISECONDS));
+
+            long startNanos = System.nanoTime();
+            URLConnection connection = server.url("/").url().openConnection();
+            connection.setDoOutput(true);
+            connection.getOutputStream().write("ABCDEF".getBytes("UTF-8"));
+            InputStream in = connection.getInputStream();
+            assertThat(in.read()).isEqualTo(-1);
+
+            long elapsedNanos = System.nanoTime() - startNanos;
+            long elapsedMillis = NANOSECONDS.toMillis(elapsedNanos);
+
+            assertThat(elapsedMillis >= 500).isTrue().describedAs(Util.format("Request + Response: %sms", elapsedMillis));
+            assertThat(elapsedMillis < 1000).isTrue().describedAs(Util.format("Request + Response: %sms", elapsedMillis));
+        }
+
+        @Test
+        @DisplayName("Throttle the request body by sleeping 500ms after every 3 bytes. With a 6-byte request, this should yield one sleep for a total delay of 500ms.")
+        public void throttleResponse() throws Exception {
+            server.enqueue(new MockResponse()
+                    .setBody("ABCDEF")
+                    .throttleBody(3, 500, TimeUnit.MILLISECONDS));
+
+            long startNanos = System.nanoTime();
+            URLConnection connection = server.url("/").url().openConnection();
+            InputStream in = connection.getInputStream();
+            assertThat(in.read()).isEqualTo('A');
+            assertThat(in.read()).isEqualTo('B');
+            assertThat(in.read()).isEqualTo('C');
+            assertThat(in.read()).isEqualTo('D');
+            assertThat(in.read()).isEqualTo('E');
+            assertThat(in.read()).isEqualTo('F');
+            assertThat(in.read()).isEqualTo(-1);
+
+            long elapsedNanos = System.nanoTime() - startNanos;
+            long elapsedMillis = NANOSECONDS.toMillis(elapsedNanos);
+
+            assertThat(elapsedMillis >= 500).isTrue().describedAs(Util.format("Request + Response: %sms", elapsedMillis));
+            assertThat(elapsedMillis < 1000).isTrue().describedAs(Util.format("Request + Response: %sms", elapsedMillis));
+        }
+
+        @Test
+        @DisplayName("should delay the response body by sleeping 1s.")
+        public void delayResponse() throws IOException {
+            server.enqueue(new MockResponse()
+                    .setBody("ABCDEF")
+                    .setBodyDelay(1, SECONDS));
+
+            long startNanos = System.nanoTime();
+            URLConnection connection = server.url("/").url().openConnection();
+            InputStream in = connection.getInputStream();
+            assertThat(in.read()).isEqualTo('A');
+            long elapsedNanos = System.nanoTime() - startNanos;
+            long elapsedMillis = NANOSECONDS.toMillis(elapsedNanos);
+            assertThat(elapsedMillis >= 1000).isTrue().describedAs(Util.format("Request + Response: %sms", elapsedMillis));
+
+            in.close();
+        }
+
+        @Test
+        @DisplayName("should disconnect request halfway")
+        public void disconnectRequestHalfway() throws IOException {
+            server.enqueue(new MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_DURING_REQUEST_BODY));
+            // Limit the size of the request body that the server holds in memory to an arbitrary
+            // 3.5 MBytes so this test can pass on devices with little memory.
+            server.setBodyLimit(7 * 512 * 1024);
+
+            HttpURLConnection connection = (HttpURLConnection) server.url("/").url().openConnection();
+            connection.setRequestMethod("POST");
+            connection.setDoOutput(true);
+            connection.setFixedLengthStreamingMode(1024 * 1024 * 1024); // 1 GB
+            connection.connect();
+            OutputStream out = connection.getOutputStream();
+
+            byte[] data = new byte[1024 * 1024];
+            int i;
+            for (i = 0; i < 1024; i++) {
+                try {
+                    out.write(data);
+                    out.flush();
+                }
+                catch (IOException e) {
+                    break;
+                }
+            }
+            assertThat(i).isCloseTo(512, Percentage.withPercentage(10d));
+        }
+
+        @Test
+        @DisplayName("should disconnect response halfway")
+        public void disconnectResponseHalfway() throws IOException {
+            server.enqueue(new MockResponse()
+                    .setBody("ab")
+                    .setSocketPolicy(SocketPolicy.DISCONNECT_DURING_RESPONSE_BODY));
+
+            URLConnection connection = server.url("/").url().openConnection();
+            assertThat(connection.getContentLength()).isEqualTo(2);
+
+            InputStream in = connection.getInputStream();
+            assertThat(in.read()).isEqualTo('a');
+            try {
+                int byteRead = in.read();
+                // OpenJDK behavior: end of stream.
+                assertThat(in.read()).isEqualTo(-1);
+            }
+            catch (ProtocolException e) {
+                // On Android, HttpURLConnection is implemented by OkHttp v2. OkHttp
+                // treats an incomplete response body as a ProtocolException.
+            }
+        }
+
+
     }
 
+    @Nested
+    @DisplayName("Server shutdown:")
+    class TestServerShutdown {
+        @Test
+        @DisplayName("should disconnect response halfway")
+        public void shutdownWithoutStart() throws IOException {
+            MockWebServerExtension server = new MockWebServerExtension();
+            server.shutdown();
+        }
 
-//
-//    @Test
-//    public void nonHexadecimalChunkSize() throws Exception {
-//        server.enqueue(new MockResponse()
-//                .setBody("G\r\nxxxxxxxxxxxxxxxx\r\n0\r\n\r\n")
-//                .clearHeaders()
-//                .addHeader("Transfer-encoding: chunked"));
-//
-//        URLConnection connection = server.url("/").url().openConnection();
-//        InputStream in = connection.getInputStream();
-//        assertThrows(IOException.class, () -> in.read());
-//        try {
-//            in.read();
-//            fail();
-//        }
-//        catch (IOException expected) {
-//        }
-//    }
-//
-//    @Test
-//    public void responseTimeout() throws Exception {
-//        server.enqueue(new MockResponse()
-//                .setBody("ABC")
-//                .clearHeaders()
-//                .addHeader("Content-Length: 4"));
-//        server.enqueue(new MockResponse().setBody("DEF"));
-//
-//        URLConnection urlConnection = server.url("/").url().openConnection();
-//        urlConnection.setReadTimeout(1000);
-//        InputStream in = urlConnection.getInputStream();
-//        assertEquals('A', in.read());
-//        assertEquals('B', in.read());
-//        assertEquals('C', in.read());
-//        try {
-//            in.read(); // if Content-Length was accurate, this would return -1 immediately
-//            fail();
-//        }
-//        catch (SocketTimeoutException expected) {
-//        }
-//
-//        URLConnection urlConnection2 = server.url("/").url().openConnection();
-//        InputStream in2 = urlConnection2.getInputStream();
-//        assertEquals('D', in2.read());
-//        assertEquals('E', in2.read());
-//        assertEquals('F', in2.read());
-//        assertEquals(-1, in2.read());
-//
-//        assertEquals(0, server.takeRequest().getSequenceNumber());
-//        assertEquals(0, server.takeRequest().getSequenceNumber());
-//    }
-//
-//    @Test
-//    public void disconnectAtStart() throws Exception {
-//        server.enqueue(new MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START));
-//        server.enqueue(new MockResponse()); // The jdk's HttpUrlConnection is a bastard.
-//        server.enqueue(new MockResponse());
-//        try {
-//            server.url("/a").url().openConnection().getInputStream();
-//        }
-//        catch (IOException expected) {
-//        }
-//        server.url("/b").url().openConnection().getInputStream(); // Should succeed.
-//    }
-//
-//    /**
-//     * Throttle the request body by sleeping 500ms after every 3 bytes. With a 6-byte request, this
-//     * should yield one sleep for a total delay of 500ms.
-//     */
-//    @Test
-//    public void throttleRequest() throws Exception {
-//        server.enqueue(new MockResponse()
-//                .throttleBody(3, 500, TimeUnit.MILLISECONDS));
-//
-//        long startNanos = System.nanoTime();
-//        URLConnection connection = server.url("/").url().openConnection();
-//        connection.setDoOutput(true);
-//        connection.getOutputStream().write("ABCDEF".getBytes("UTF-8"));
-//        InputStream in = connection.getInputStream();
-//        assertEquals(-1, in.read());
-//        long elapsedNanos = System.nanoTime() - startNanos;
-//        long elapsedMillis = NANOSECONDS.toMillis(elapsedNanos);
-//
-//        assertTrue(Util.format("Request + Response: %sms", elapsedMillis), elapsedMillis >= 500);
-//        assertTrue(Util.format("Request + Response: %sms", elapsedMillis), elapsedMillis < 1000);
-//    }
-//
-//    /**
-//     * Throttle the response body by sleeping 500ms after every 3 bytes. With a 6-byte response, this
-//     * should yield one sleep for a total delay of 500ms.
-//     */
-//    @Test
-//    public void throttleResponse() throws Exception {
-//        server.enqueue(new MockResponse()
-//                .setBody("ABCDEF")
-//                .throttleBody(3, 500, TimeUnit.MILLISECONDS));
-//
-//        long startNanos = System.nanoTime();
-//        URLConnection connection = server.url("/").url().openConnection();
-//        InputStream in = connection.getInputStream();
-//        assertEquals('A', in.read());
-//        assertEquals('B', in.read());
-//        assertEquals('C', in.read());
-//        assertEquals('D', in.read());
-//        assertEquals('E', in.read());
-//        assertEquals('F', in.read());
-//        assertEquals(-1, in.read());
-//        long elapsedNanos = System.nanoTime() - startNanos;
-//        long elapsedMillis = NANOSECONDS.toMillis(elapsedNanos);
-//
-//        assertTrue(Util.format("Request + Response: %sms", elapsedMillis), elapsedMillis >= 500);
-//        assertTrue(Util.format("Request + Response: %sms", elapsedMillis), elapsedMillis < 1000);
-//    }
-//
-//    /**
-//     * Delay the response body by sleeping 1s.
-//     */
-//    @Test
-//    public void delayResponse() throws IOException {
-//        server.enqueue(new MockResponse()
-//                .setBody("ABCDEF")
-//                .setBodyDelay(1, SECONDS));
-//
-//        long startNanos = System.nanoTime();
-//        URLConnection connection = server.url("/").url().openConnection();
-//        InputStream in = connection.getInputStream();
-//        assertEquals('A', in.read());
-//        long elapsedNanos = System.nanoTime() - startNanos;
-//        long elapsedMillis = NANOSECONDS.toMillis(elapsedNanos);
-//        assertTrue(Util.format("Request + Response: %sms", elapsedMillis), elapsedMillis >= 1000);
-//
-//        in.close();
-//    }
-//
-//    @Test
-//    public void disconnectRequestHalfway() throws IOException {
-//        server.enqueue(new MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_DURING_REQUEST_BODY));
-//        // Limit the size of the request body that the server holds in memory to an arbitrary
-//        // 3.5 MBytes so this test can pass on devices with little memory.
-//        server.setBodyLimit(7 * 512 * 1024);
-//
-//        HttpURLConnection connection = (HttpURLConnection) server.url("/").url().openConnection();
-//        connection.setRequestMethod("POST");
-//        connection.setDoOutput(true);
-//        connection.setFixedLengthStreamingMode(1024 * 1024 * 1024); // 1 GB
-//        connection.connect();
-//        OutputStream out = connection.getOutputStream();
-//
-//        byte[] data = new byte[1024 * 1024];
-//        int i;
-//        for (i = 0; i < 1024; i++) {
-//            try {
-//                out.write(data);
-//                out.flush();
-//            }
-//            catch (IOException e) {
-//                break;
-//            }
-//        }
-//        assertEquals(512f, i, 10f); // Halfway +/- 1%
-//    }
-//
-//    @Test
-//    public void disconnectResponseHalfway() throws IOException {
-//        server.enqueue(new MockResponse()
-//                .setBody("ab")
-//                .setSocketPolicy(SocketPolicy.DISCONNECT_DURING_RESPONSE_BODY));
-//
-//        URLConnection connection = server.url("/").url().openConnection();
-//        assertEquals(2, connection.getContentLength());
-//        InputStream in = connection.getInputStream();
-//        assertEquals('a', in.read());
-//        try {
-//            int byteRead = in.read();
-//            // OpenJDK behavior: end of stream.
-//            assertEquals(-1, byteRead);
-//        }
-//        catch (ProtocolException e) {
-//            // On Android, HttpURLConnection is implemented by OkHttp v2. OkHttp
-//            // treats an incomplete response body as a ProtocolException.
-//        }
-//    }
-//
+        @Test
+        @DisplayName("should close via closeable")
+        public void closeViaClosable() throws IOException {
+            Closeable server = new MockWebServerExtension();
+            server.close();
+        }
 
-//
-//    @Test
-//    public void shutdownWithoutStart() throws IOException {
-//        MockWebServerExtension server = new MockWebServerExtension();
-//        server.shutdown();
-//    }
-//
-//    @Test
-//    public void closeViaClosable() throws IOException {
-//        Closeable server = new MockWebServerExtension();
-//        server.close();
-//    }
-//
-//    @Test
-//    public void shutdownWithoutEnqueue() throws IOException {
-//        MockWebServerExtension server = new MockWebServerExtension();
-//        server.start();
-//        server.shutdown();
-//    }
-//
-//    @After
-//    public void tearDown() throws IOException {
-//        server.shutdown();
-//    }
-//
-//    @Test
-//    public void portImplicitlyStarts() throws IOException {
-//        assertTrue(server.getPort() > 0);
-//    }
-//
-//    @Test
-//    public void hostnameImplicitlyStarts() throws IOException {
-//        assertNotNull(server.getHostName());
-//    }
-//
-//    @Test
-//    public void toProxyAddressImplicitlyStarts() throws IOException {
-//        assertNotNull(server.toProxyAddress());
-//    }
-//
-//    @Test
-//    public void differentInstancesGetDifferentPorts() throws IOException {
-//        MockWebServerExtension other = new MockWebServerExtension();
-//        assertNotEquals(server.getPort(), other.getPort());
-//        other.shutdown();
-//    }
+        @Test
+        @DisplayName("should shutdown without enqueue")
+        public void shutdownWithoutEnqueue() throws IOException {
+            MockWebServerExtension server = new MockWebServerExtension();
+            server.start();
+            server.shutdown();
+        }
+    }
+
+    @Nested
+    @DisplayName("Server start:")
+    class TestServerStart {
+        @BeforeEach
+        public void setUp() throws Exception {
+            server.start();
+        }
+
+        @AfterEach
+        public void tearDown() throws Exception {
+            server.shutdown();
+        }
+
+        @Test
+        public void portImplicitlyStarts() throws IOException {
+            assertThat(server.getPort() > 0).isTrue();
+        }
+
+        @Test
+        public void hostnameImplicitlyStarts() throws IOException {
+            assertThat(server.getHostName()).isNotEmpty();
+        }
+
+        @Test
+        public void toProxyAddressImplicitlyStarts() throws IOException {
+            assertThat(server.toProxyAddress()).isNotNull();
+        }
+
+        @Test
+        public void differentInstancesGetDifferentPorts() throws IOException {
+            MockWebServerExtension other = new MockWebServerExtension();
+            assertThat(server.getPort()).isNotEqualTo(other.getPort());
+            other.shutdown();
+        }
+    }
+
 //
 //    @Test
 //    public void statementStartsAndStops() throws Throwable {
