@@ -2,11 +2,9 @@
 
 A scriptable web server for testing HTTP clients
 
-This project is a fork of the project https://github.com/square/okhttp/tree/master/mockwebserver[okhttp-mockwebserver]. I had to do that to usee this project (created by Square) in a project with Java >=8 and with Junit5. The rule `_MockWebServer_` is replaced by a Junit 5 extension `_MockWebServerExtension_`
+This project is a fork of the project https://github.com/square/okhttp/tree/master/mockwebserver[okhttp-mockwebserver]. I had to do that to use this project (created by https://squareup.com/[Square]) in a project with Java >=8 and with Junit5. The rule `_MockWebServer_` is replaced by a Junit 5 extension `_MockWebServerExtension_`
 
 This project is managed by Dev-Mind but you can send push request or open issues
-
-
 
 == Motivation
 This library makes it easy to test that your app Does The Right Thing when it makes HTTP and HTTPS calls. It lets you specify which responses to return and then verify that requests were made as expected.
