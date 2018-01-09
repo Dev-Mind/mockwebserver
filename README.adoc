@@ -16,5 +16,3 @@ Because it exercises your full HTTP stack, you can be confident that you're test
 === Example
 Use MockWebServerExtension the same way that you use other frameworks extensions like Spring:
 
-Here's a complete example:
-
