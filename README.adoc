@@ -2,7 +2,9 @@
 
 A scriptable web server for testing HTTP clients
 
-This project is a fork of the project https://github.com/square/okhttp/tree/master/mockwebserver[okhttp-mockwebserver] (created by https://squareup.com/[Square]). This evolution targets any Java project with Java >=8 and with Juni t5. The rule `_MockWebServer_` is replaced by a Junit 5 extension `_MockWebServerExtension_`. This project exists because the initial one won't upgraded to Java 8 and Junit 5. 
+This project is a fork of the project https://github.com/square/okhttp/tree/master/mockwebserver[okhttp-mockwebserver] (created by https://squareup.com/[Square]). This evolution targets any Java project with Java >= 8 and with Junit >= 5. The rule `_MockWebServer_` is replaced by a Junit 5 extension, `_MockWebServerExtension_`. This project exists because the initial one won't upgraded to Java 8 and Junit 5.
+
+The original version has also several warning on compilation because of the classes used to generate certificate. This fork fix them
 
 This project is managed by Dev-Mind but you can send push request or open issues
 
@@ -12,10 +14,52 @@ This library makes it easy to test that your app Does The Right Thing when it ma
 Because it exercises your full HTTP stack, you can be confident that you're testing everything. You can even copy & paste HTTP responses from your real web server to create representative test cases. Or test that your code survives in awkward-to-reproduce situations like 500 errors or slow-loading responses.
 
 === Example
-Use MockWebServerExtension the same way that you use other frameworks extensions like Spring:
+Use MockWebServerExtension the same way that you use other frameworks extensions in Junit 5 tests.
 
-  TODO
+For example if you want to test a Spring service in a WebFlux app you could use
 
+[source, java, subs="none"]
+----
+
+@ExtendWith(MockWebServerExtension.class)
+class MySpringWebfluxServiceTest {
+
+    private MockWebServer server;
+    private WebClient webClient;
+    private MySpringWebfluxService service;
+
+    @BeforeEach
+    public void setup(MockWebServer server) {
+        this.webClient = WebClient.create(server.url("/").toString());
+        this.service = new MySpringWebfluxService(webClient);
+        this.server = server;
+    }
+
+    @Test
+    public void mytest() throws Exception {
+        prepareResponse(response -> response
+                .setHeader("Content-Type", "application/json")
+                .setBody( "{\n" +
+                          "  \"error_message\" : \"The provided API key is invalid.\",\n" +
+                          "  \"predictions\" : [],\n" +
+                          "  \"status\" : \"REQUEST_DENIED\"\n" +
+                          "}"));
+
+        StepVerifier.create(service.myMethod())
+                .expectComplete()
+                .verify(Duration.ofSeconds(3));
+    }
+
+    private void prepareResponse(Consumer<MockResponse> consumer) {
+        MockResponse response = new MockResponse();
+        consumer.accept(response);
+        this.server.enqueue(response);
+    }
+
+}
+----
+
+The server is automatically launch and stop before and after each tests
 
 === License
 Licensed under the Apache License, Version 2.0 (the "License");
