@@ -20,7 +20,6 @@ For example if you want to test a Spring service in a WebFlux app you could use
 
 [source, java, subs="none"]
 ----
-
 @ExtendWith(MockWebServerExtension.class)
 class MySpringWebfluxServiceTest {
 
@@ -59,7 +58,59 @@ class MySpringWebfluxServiceTest {
 }
 ----
 
-The server is automatically launched and stopped before and after each tests
+The server is automatically launched and stopped before and after each tests. If you want to manage the lifecycle by yourself you can use `_MockSimpleWebServerExtension_`
+
+For example
+
+[source, java, subs="none"]
+----
+@ExtendWith(MockSimpleWebServerExtension.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+class MySpringWebfluxServiceTest {
+
+    private MockWebServer server;
+    private WebClient webClient;
+    private MySpringWebfluxService service;
+
+    @BeforeAll
+    public void init(MockWebServer server) throws IOException {
+        server.start();
+        this.server = server;
+    }
+
+    @AfterAll
+    public void tearDown() throws IOException {
+        server.shutdown();
+    }
+
+    @BeforeEach
+    public void setup(MockWebServer server) {
+        this.webClient = WebClient.create(server.url("/").toString());
+        this.service = new MySpringWebfluxService(webClient);
+    }
+
+    @Test
+    public void mytest() throws Exception {
+        prepareResponse(response -> response
+                .setHeader("Content-Type", "application/json")
+                .setBody( "{\n" +
+                          "  \"error_message\" : \"The provided API key is invalid.\",\n" +
+                          "  \"predictions\" : [],\n" +
+                          "  \"status\" : \"REQUEST_DENIED\"\n" +
+                          "}"));
+
+        StepVerifier.create(service.myMethod())
+                .expectComplete()
+                .verify(Duration.ofSeconds(3));
+    }
+
+    private void prepareResponse(Consumer<MockResponse> consumer) {
+        MockResponse response = new MockResponse();
+        consumer.accept(response);
+        this.server.enqueue(response);
+    }
+}
+----
 
 == Use MockWebServer in your project
 
