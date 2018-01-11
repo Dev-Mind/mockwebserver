@@ -1,8 +1,10 @@
+[![Travis CI](https://travis-ci.org/Dev-Mind/mockwebserver.svg?branch=master)](https://travis-ci.org/Dev-Mind/mockwebserver)
+
 = MockWebServer for Junit 5
 
 A scriptable web server for testing HTTP clients
 
-This project is a fork of the project https://github.com/square/okhttp/tree/master/mockwebserver[okhttp-mockwebserver] (created by https://squareup.com/[Square]). This evolution targets any Java project with Java >= 8 and with Junit >= 5. The rule `_MockWebServer_` is replaced by a Junit 5 extension, `_MockWebServerExtension_`. This project exists because the initial one won't upgraded to Java 8 and Junit 5.
+This project is a fork of the project https://github.com/square/okhttp/tree/master/mockwebserver[okhttp-mockwebserver] (created by https://squareup.com/[Square]). This evolution targets any Java project with Java >= 8 and with Junit >= 5. Yu can use the Junit 5 extension, `_MockWebServerExtension_`. This project exists because the initial one won't upgraded to Java 8 and Junit 5.
 
 The original version has also several warning on compilation because of the classes used to generate certificate. This fork fix them
 
