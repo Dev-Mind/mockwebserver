@@ -15,10 +15,6 @@
  */
 package com.devmind.mockwebserver;
 
-import com.devmind.mockwebserver.Dispatcher;
-import com.devmind.mockwebserver.MockResponse;
-import com.devmind.mockwebserver.MockWebServerExtension;
-import com.devmind.mockwebserver.RecordedRequest;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;

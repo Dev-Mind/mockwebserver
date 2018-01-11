@@ -59,7 +59,28 @@ class MySpringWebfluxServiceTest {
 }
 ----
 
-The server is automatically launch and stop before and after each tests
+The server is automatically launched and stopped before and after each tests
+
+== Use MockWebServer in your project
+
+Get MockWebServer via Maven:
+
+[source, html]
+----
+<dependency>
+  <groupId>fr.dev-mind</groupId>
+  <artifactId>mockwebserver</artifactId>
+  <version>(insert latest version)</version>
+  <scope>test</scope>
+</dependency>
+----
+
+or via Gradle
+
+[source, java, subs="none"]
+----
+testCompile 'fr.dev-mind.mockwebserver:(insert latest version)'
+----
 
 === License
 Licensed under the Apache License, Version 2.0 (the "License");

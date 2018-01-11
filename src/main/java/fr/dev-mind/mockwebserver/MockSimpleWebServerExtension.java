@@ -20,17 +20,17 @@ package com.devmind.mockwebserver;
 import org.junit.jupiter.api.extension.*;
 import org.junit.jupiter.api.extension.ExtensionContext.Store;
 
-import java.lang.reflect.Parameter;
-
 /**
- * Junit 5 extension used to inject a server in your tests
+ * Junit 5 extension used to inject a server in your tests. You can see an example on the Readme of this project https://github.com/Dev-Mind/mockwebserver.
+ * With this extension you have to manage the start and stop of your server. If you want an automatic start and stop before and after each test can use
+ * {@link MockWebServerExtension}
  */
-public final class MockWebServerExtension implements ParameterResolver, BeforeEachCallback, AfterAllCallback {
+public final class MockSimpleWebServerExtension implements ParameterResolver {
 
-    private static final String STORE = "MWSStore";
-    private static final String SERVER = "MWSServer";
+    private static final String STORE = "MWSimpleStore";
+    private static final String SERVER = "MWSimpleServer";
 
-    private MockWebServer webServer = new MockWebServer();
+    protected MockWebServer webServer = new MockWebServer();
 
     /**
      * If you want to use a server in your tests you can inject an instance of this bean if you declare a property
@@ -43,19 +43,7 @@ public final class MockWebServerExtension implements ParameterResolver, BeforeEa
 
     @Override
     public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        Store mocks = extensionContext.getStore(ExtensionContext.Namespace.create(MockWebServerExtension.class, STORE));
+        Store mocks = extensionContext.getStore(ExtensionContext.Namespace.create(MockSimpleWebServerExtension.class, STORE));
         return mocks.getOrComputeIfAbsent(SERVER, key -> webServer);
-    }
-
-    @Override
-    public void afterAll(ExtensionContext extensionContext) throws Exception {
-        webServer.shutdown();
-    }
-
-    @Override
-    public void beforeEach(ExtensionContext extensionContext) throws Exception {
-        if (!webServer.isStarted()){
-            webServer.start();
-        }
     }
 }
