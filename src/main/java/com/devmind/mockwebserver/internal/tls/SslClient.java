@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package okhttp3.internal.tls;
+package com.devmind.mockwebserver.internal.tls;
+
+import org.bouncycastle.operator.OperatorCreationException;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -72,7 +74,7 @@ public final class SslClient {
 
             return localhost;
         }
-        catch (GeneralSecurityException | UnknownHostException e) {
+        catch (GeneralSecurityException | UnknownHostException | OperatorCreationException e) {
             throw new RuntimeException(e);
         }
     }

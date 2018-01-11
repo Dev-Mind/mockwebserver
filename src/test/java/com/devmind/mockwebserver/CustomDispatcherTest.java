@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package mockwebserver;
+package com.devmind.mockwebserver;
 
-import okhttp3.mockwebserver.Dispatcher;
-import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServerExtension;
-import okhttp3.mockwebserver.RecordedRequest;
+import com.devmind.mockwebserver.Dispatcher;
+import com.devmind.mockwebserver.MockResponse;
+import com.devmind.mockwebserver.MockWebServerExtension;
+import com.devmind.mockwebserver.RecordedRequest;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;

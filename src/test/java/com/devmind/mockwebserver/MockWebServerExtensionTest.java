@@ -13,14 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package mockwebserver;
+package com.devmind.mockwebserver;
 
 import okhttp3.Headers;
+import okhttp3.HttpUrl;
 import okhttp3.internal.Util;
-import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServerExtension;
-import okhttp3.mockwebserver.RecordedRequest;
-import okhttp3.mockwebserver.SocketPolicy;
+import com.devmind.mockwebserver.MockResponse;
+import com.devmind.mockwebserver.MockWebServerExtension;
+import com.devmind.mockwebserver.RecordedRequest;
+import com.devmind.mockwebserver.SocketPolicy;
 import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,6 +41,7 @@ import java.net.ProtocolException;
 import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -52,12 +54,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ExtendWith(MockWebServerExtension.class)
 @DisplayName("Test MockWebServerExtension")
-public final class MockWebServerTest {
+public final class MockWebServerExtensionTest {
 
     MockWebServerExtension server = new MockWebServerExtension();
 
     @Nested
-    @DisplayName("Headers :")
+    @DisplayName("Headers ")
     class TestMockResponseHeader {
         @Test
         @DisplayName("default mock response contains no header")
@@ -146,7 +148,7 @@ public final class MockWebServerTest {
     }
 
     @Nested
-    @DisplayName("Server :")
+    @DisplayName("Server ")
     class TestServer {
         @BeforeEach
         public void setUp() throws Exception {
@@ -397,7 +399,7 @@ public final class MockWebServerTest {
     }
 
     @Nested
-    @DisplayName("Server shutdown:")
+    @DisplayName("Server shutdown")
     class TestServerShutdown {
         @Test
         @DisplayName("should disconnect response halfway")
@@ -420,10 +422,22 @@ public final class MockWebServerTest {
             server.start();
             server.shutdown();
         }
+
+        @Test
+        @DisplayName("should shutdown while blocked dispatching")
+        public void shutdownWhileBlockedDispatching() throws Exception {
+            server.start();
+            // Enqueue a request that'll cause MockWebServer to hang on QueueDispatcher.dispatch().
+            HttpURLConnection connection = (HttpURLConnection) server.url("/").url().openConnection();
+            connection.setReadTimeout(500);
+            assertThatThrownBy(() -> connection.getResponseCode()).isExactlyInstanceOf(SocketTimeoutException.class);
+            // Shutting down the server should unblock the dispatcher.
+            server.shutdown();
+        }
     }
 
     @Nested
-    @DisplayName("Server start:")
+    @DisplayName("Server start")
     class TestServerStart {
         @BeforeEach
         public void setUp() throws Exception {
@@ -436,104 +450,73 @@ public final class MockWebServerTest {
         }
 
         @Test
+        @DisplayName("should attribute a random port")
         public void portImplicitlyStarts() throws IOException {
             assertThat(server.getPort() > 0).isTrue();
         }
 
         @Test
+        @DisplayName("should set the hostname")
         public void hostnameImplicitlyStarts() throws IOException {
             assertThat(server.getHostName()).isNotEmpty();
         }
 
         @Test
+        @DisplayName("should set the proxy adress")
         public void toProxyAddressImplicitlyStarts() throws IOException {
             assertThat(server.toProxyAddress()).isNotNull();
         }
 
         @Test
+        @DisplayName("should attribute different port to servers")
         public void differentInstancesGetDifferentPorts() throws IOException {
             MockWebServerExtension other = new MockWebServerExtension();
             assertThat(server.getPort()).isNotEqualTo(other.getPort());
             other.shutdown();
         }
+
+        @Test
+        @DisplayName("should continue on code status 100")
+        public void http100Continue() throws Exception {
+            server.enqueue(new MockResponse().setBody("response"));
+
+            URL url = server.url("/").url();
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setDoOutput(true);
+            connection.setRequestProperty("Expect", "100-Continue");
+            connection.getOutputStream().write("request".getBytes(StandardCharsets.UTF_8));
+
+            InputStream in = connection.getInputStream();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+            assertThat(reader.readLine()).isEqualTo("response");
+
+            RecordedRequest request = server.takeRequest();
+            assertThat(request.getBody().readUtf8()).isEqualTo("request");
+        }
+
+        @Test
+        @DisplayName("should reconstruct URL")
+        public void requestUrlReconstructed() throws Exception {
+            server.enqueue(new MockResponse().setBody("hello world"));
+
+            URL url = server.url("/a/deep/path?key=foo%20bar").url();
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            InputStream in = connection.getInputStream();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+
+            assertThat(connection.getResponseCode()).isEqualTo(HttpURLConnection.HTTP_OK);
+            assertThat(reader.readLine()).isEqualTo("hello world");
+
+            RecordedRequest request = server.takeRequest();
+            assertThat(request.getRequestLine()).isEqualTo("GET /a/deep/path?key=foo%20bar HTTP/1.1");
+
+            HttpUrl requestUrl = request.getRequestUrl();
+            assertThat(requestUrl.scheme()).isEqualTo("http");
+            assertThat(server.getHostName()).isEqualTo(requestUrl.host());
+            assertThat(server.getPort()).isEqualTo(requestUrl.port());
+            assertThat(requestUrl.encodedPath()).isEqualTo("/a/deep/path");
+            assertThat(requestUrl.queryParameter("key")).isEqualTo("foo bar");
+        }
     }
 
-//
-//    @Test
-//    public void statementStartsAndStops() throws Throwable {
-//        final AtomicBoolean called = new AtomicBoolean();
-//        Statement statement = server.apply(new Statement() {
-//            @Override
-//            public void evaluate() throws Throwable {
-//                called.set(true);
-//                server.url("/").url().openConnection().connect();
-//            }
-//        }, Description.EMPTY);
-//
-//        statement.evaluate();
-//
-//        assertTrue(called.get());
-//        try {
-//            server.url("/").url().openConnection().connect();
-//            fail();
-//        }
-//        catch (ConnectException expected) {
-//        }
-//    }
-//
-//    @Test
-//    public void shutdownWhileBlockedDispatching() throws Exception {
-//        // Enqueue a request that'll cause MockWebServer to hang on QueueDispatcher.dispatch().
-//        HttpURLConnection connection = (HttpURLConnection) server.url("/").url().openConnection();
-//        connection.setReadTimeout(500);
-//        try {
-//            connection.getResponseCode();
-//            fail();
-//        }
-//        catch (SocketTimeoutException expected) {
-//        }
-//
-//        // Shutting down the server should unblock the dispatcher.
-//        server.shutdown();
-//    }
-//
-//    @Test
-//    public void requestUrlReconstructed() throws Exception {
-//        server.enqueue(new MockResponse().setBody("hello world"));
-//
-//        URL url = server.url("/a/deep/path?key=foo%20bar").url();
-//        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-//        InputStream in = connection.getInputStream();
-//        BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-//        assertEquals(HttpURLConnection.HTTP_OK, connection.getResponseCode());
-//        assertEquals("hello world", reader.readLine());
-//
-//        RecordedRequest request = server.takeRequest();
-//        assertEquals("GET /a/deep/path?key=foo%20bar HTTP/1.1", request.getRequestLine());
-//
-//        HttpUrl requestUrl = request.getRequestUrl();
-//        assertEquals("http", requestUrl.scheme());
-//        assertEquals(server.getHostName(), requestUrl.host());
-//        assertEquals(server.getPort(), requestUrl.port());
-//        assertEquals("/a/deep/path", requestUrl.encodedPath());
-//        assertEquals("foo bar", requestUrl.queryParameter("key"));
-//    }
-//
-//    @Test
-//    public void http100Continue() throws Exception {
-//        server.enqueue(new MockResponse().setBody("response"));
-//
-//        URL url = server.url("/").url();
-//        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-//        connection.setDoOutput(true);
-//        connection.setRequestProperty("Expect", "100-Continue");
-//        connection.getOutputStream().write("request".getBytes(StandardCharsets.UTF_8));
-//
-//        InputStream in = connection.getInputStream();
-//        BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-//        assertEquals("response", reader.readLine());
-//
-//        RecordedRequest request = server.takeRequest();
-//        assertEquals("request", request.getBody().readUtf8());
-//    }
 }

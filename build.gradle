@@ -3,9 +3,10 @@ buildscript {
         junitPlatformVersion = '1.0.2'
         junitVersion = '5.0.2'
         okHttpVersion = '3.9.1'
-        bouncycastleVersion = '1.50'
+        bouncycastleVersion = '1.59'
     }
     repositories {
+        mavenLocal()
         mavenCentral()
     }
     dependencies {
@@ -15,23 +16,49 @@ buildscript {
 
 apply plugin: 'java'
 apply plugin: 'idea'
-apply plugin: "org.junit.platform.gradle.plugin"
+apply plugin: 'org.junit.platform.gradle.plugin'
+apply plugin: 'maven-publish'
+apply plugin: 'project-report'
 
 group = 'com.devmind'
 version = '0.0.1-SNAPSHOT'
 sourceCompatibility = 1.8
 
 repositories {
+    mavenLocal()
     mavenCentral()
 }
 
-
 dependencies {
+    compile('org.apiguardian:apiguardian-api:1.0.0')
     compile("com.squareup.okhttp3:okhttp:${okHttpVersion}")
     compile("com.squareup.okhttp3:okhttp-testing-support:${okHttpVersion}")
-    compile("org.bouncycastle:bcprov-jdk15on:${bouncycastleVersion}")
+    compile("org.bouncycastle:bcpkix-jdk15on:${bouncycastleVersion}")
     compile("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
 
     testCompile("org.assertj:assertj-core:3.8.0")
     testRuntime("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
+}
+
+task sourceJar(type: Jar) {
+    from sourceSets.main.allJava
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifactId 'mockwebserver'
+            groupId 'com.devmind'
+            from components.java
+
+            artifact sourceJar {
+                classifier 'sources'
+            }
+        }
+        mavenCustom(MavenPublication) {
+            pom.withXml {
+                asNode().appendNode('description', 'A scriptable web server for testing HTTP clients')
+            }
+        }
+    }
 }

@@ -14,12 +14,15 @@
  * limitations under the License.
  */
 
-package okhttp3.internal.http2;
+package com.devmind.mockwebserver.internal.http2;
 
+import com.devmind.mockwebserver.internal.tls.SslClient;
 import okhttp3.Protocol;
 import okhttp3.internal.Util;
+import okhttp3.internal.http2.Header;
+import okhttp3.internal.http2.Http2Connection;
+import okhttp3.internal.http2.Http2Stream;
 import okhttp3.internal.platform.Platform;
-import okhttp3.internal.tls.SslClient;
 import okio.BufferedSink;
 import okio.Okio;
 import okio.Source;
