@@ -15,22 +15,22 @@
  * limitations under the License.
  */
 
-package com.devmind.mockwebserver;
+package fr.devmind.mockwebserver;
 
 import org.junit.jupiter.api.extension.*;
 import org.junit.jupiter.api.extension.ExtensionContext.Store;
 
 /**
  * Junit 5 extension used to inject a server in your tests. You can see an example on the Readme of this project https://github.com/Dev-Mind/mockwebserver.
- * With this extension you have to manage the start and stop of your server. If you want an automatic start and stop before and after each test can use
- * {@link MockWebServerExtension}
+ * This extension starts the server before each test and suhtdown after the test execution. If you want to manage the lifecycle you can use
+ * {@link MockSimpleWebServerExtension}
  */
-public final class MockSimpleWebServerExtension implements ParameterResolver {
+public final class MockWebServerExtension implements ParameterResolver, BeforeEachCallback, AfterEachCallback {
 
-    private static final String STORE = "MWSimpleStore";
-    private static final String SERVER = "MWSimpleServer";
+    private static final String STORE = "MWSStore";
+    private static final String SERVER = "MWSServer";
 
-    protected MockWebServer webServer = new MockWebServer();
+    private MockWebServer webServer = new MockWebServer();
 
     /**
      * If you want to use a server in your tests you can inject an instance of this bean if you declare a property
@@ -43,7 +43,19 @@ public final class MockSimpleWebServerExtension implements ParameterResolver {
 
     @Override
     public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        Store mocks = extensionContext.getStore(ExtensionContext.Namespace.create(MockSimpleWebServerExtension.class, STORE));
+        Store mocks = extensionContext.getStore(ExtensionContext.Namespace.create(MockWebServerExtension.class, STORE));
         return mocks.getOrComputeIfAbsent(SERVER, key -> webServer);
+    }
+
+    @Override
+    public void beforeEach(ExtensionContext extensionContext) throws Exception {
+        if (!webServer.isStarted()){
+            webServer.start();
+        }
+    }
+
+    @Override
+    public void afterEach(ExtensionContext extensionContext) throws Exception {
+        webServer.shutdown();
     }
 }

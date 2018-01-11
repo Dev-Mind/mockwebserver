@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.devmind.mockwebserver;
+package fr.devmind.mockwebserver;
 
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class CustomDispatcherTest {
-    private MockWebServerExtension mockWebServer = new MockWebServerExtension();
+    private MockWebServer mockWebServer = new MockWebServer();
 
     @AfterEach
     public void tearDown() throws Exception {

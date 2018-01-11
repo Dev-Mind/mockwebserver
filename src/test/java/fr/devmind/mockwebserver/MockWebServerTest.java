@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.devmind.mockwebserver;
+package fr.devmind.mockwebserver;
 
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
@@ -49,10 +49,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ExtendWith(MockWebServerExtension.class)
-@DisplayName("Test MockWebServerExtension")
-public final class MockWebServerExtensionTest {
+@DisplayName("Test MockWebServer")
+public final class MockWebServerTest {
 
-    MockWebServerExtension server = new MockWebServerExtension();
+    MockWebServer server = new MockWebServer();
 
     @Nested
     @DisplayName("Headers ")
@@ -400,21 +400,21 @@ public final class MockWebServerExtensionTest {
         @Test
         @DisplayName("should disconnect response halfway")
         public void shutdownWithoutStart() throws IOException {
-            MockWebServerExtension server = new MockWebServerExtension();
+            MockWebServer server = new MockWebServer();
             server.shutdown();
         }
 
         @Test
         @DisplayName("should close via closeable")
         public void closeViaClosable() throws IOException {
-            Closeable server = new MockWebServerExtension();
+            Closeable server = new MockWebServer();
             server.close();
         }
 
         @Test
         @DisplayName("should shutdown without enqueue")
         public void shutdownWithoutEnqueue() throws IOException {
-            MockWebServerExtension server = new MockWebServerExtension();
+            MockWebServer server = new MockWebServer();
             server.start();
             server.shutdown();
         }
@@ -466,7 +466,7 @@ public final class MockWebServerExtensionTest {
         @Test
         @DisplayName("should attribute different port to servers")
         public void differentInstancesGetDifferentPorts() throws IOException {
-            MockWebServerExtension other = new MockWebServerExtension();
+            MockWebServer other = new MockWebServer();
             assertThat(server.getPort()).isNotEqualTo(other.getPort());
             other.shutdown();
         }

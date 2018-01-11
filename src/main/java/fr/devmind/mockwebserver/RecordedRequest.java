@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.devmind.mockwebserver;
+package fr.devmind.mockwebserver;
 
 import okhttp3.Headers;
 import okhttp3.HttpUrl;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.devmind.mockwebserver;
+package fr.devmind.mockwebserver;
 
 /**
  * What should be done with the incoming socket.

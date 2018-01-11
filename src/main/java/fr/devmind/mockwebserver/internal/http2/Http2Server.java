@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package com.devmind.mockwebserver.internal.http2;
+package fr.devmind.mockwebserver.internal.http2;
 
-import com.devmind.mockwebserver.internal.tls.SslClient;
+import fr.devmind.mockwebserver.internal.tls.SslClient;
 import okhttp3.Protocol;
 import okhttp3.internal.Util;
 import okhttp3.internal.http2.Header;

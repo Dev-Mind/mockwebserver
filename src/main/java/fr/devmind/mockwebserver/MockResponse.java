@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.devmind.mockwebserver;
+package fr.devmind.mockwebserver;
 
 import okhttp3.Headers;
 import okhttp3.WebSocketListener;
@@ -290,7 +290,7 @@ public final class MockResponse implements Cloneable {
     }
 
     /**
-     * When {@link MockWebServerExtension#setProtocols(java.util.List) protocols} include {@linkplain
+     * When {@link MockWebServer#setProtocols(java.util.List) protocols} include {@linkplain
      * okhttp3.Protocol#HTTP_2}, this attaches a pushed stream to this response.
      */
     public MockResponse withPush(PushPromise promise) {
@@ -306,7 +306,7 @@ public final class MockResponse implements Cloneable {
     }
 
     /**
-     * When {@linkplain MockWebServerExtension#setProtocols(java.util.List) protocols} include {@linkplain
+     * When {@linkplain MockWebServer#setProtocols(java.util.List) protocols} include {@linkplain
      * okhttp3.Protocol#HTTP_2 HTTP/2}, this pushes {@code settings} before writing the response.
      */
     public MockResponse withSettings(Settings settings) {

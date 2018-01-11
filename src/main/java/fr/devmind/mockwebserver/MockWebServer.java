@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.devmind.mockwebserver;
+package fr.devmind.mockwebserver;
 
 import okhttp3.*;
 import okhttp3.internal.Internal;
@@ -43,7 +43,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static com.devmind.mockwebserver.SocketPolicy.*;
+import static fr.devmind.mockwebserver.SocketPolicy.*;
 import static okhttp3.internal.Util.closeQuietly;
 
 /**
@@ -211,9 +211,6 @@ public final class MockWebServer implements Closeable {
      * Scripts {@code response} to be returned to a request made in sequence. The first request is
      * served by the first enqueued response; the second request by the second enqueued response; and
      * so on.
-     *
-     * @throws ClassCastException if the default dispatcher has been replaced with {@link
-     *                            #setDispatcher(Dispatcher)}.
      */
     public void enqueue(MockResponse response) {
         ((QueueDispatcher) dispatcher).enqueueResponse(response.clone());

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.devmind.mockwebserver;
+package fr.devmind.mockwebserver;
 
 import okhttp3.Headers;
 
