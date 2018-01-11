@@ -1,4 +1,4 @@
-[![Travis CI](https://travis-ci.org/Dev-Mind/mockwebserver.svg?branch=master)](https://travis-ci.org/Dev-Mind/mockwebserver)
+image::https://travis-ci.org/Dev-Mind/mockwebserver.svg?branch=master[Travis CI]
 
 = MockWebServer for Junit 5
 
