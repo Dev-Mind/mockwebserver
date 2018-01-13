@@ -11,17 +11,20 @@ buildscript {
     }
     dependencies {
         classpath("org.junit.platform:junit-platform-gradle-plugin:${junitPlatformVersion}")
+        classpath "io.codearte.gradle.nexus:gradle-nexus-staging-plugin:0.11.0"
     }
 }
 
 apply plugin: 'java'
 apply plugin: 'idea'
+apply plugin: 'signing'
 apply plugin: 'org.junit.platform.gradle.plugin'
-apply plugin: 'maven-publish'
+apply plugin: 'maven'
 apply plugin: 'project-report'
 
 group = 'fr.dev-mind'
-version = '0.0.1-SNAPSHOT'
+archivesBaseName = "mockwebserver"
+version = rootProject.version
 sourceCompatibility = 1.8
 
 repositories {
@@ -40,24 +43,93 @@ dependencies {
     testRuntime("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
 }
 
-task sourceJar(type: Jar) {
-    from sourceSets.main.allJava
+ext.isReleaseVersion = !version.endsWith("SNAPSHOT")
+ext.sharedManifest = manifest {
+    attributes(
+            "Implementation-Title": project.name,
+            "Implementation-Version": version,
+            "Implementation-Vendor": project.group,
+            "Bundle-Vendor": project.group
+    )
 }
 
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            artifactId 'mockwebserver'
-            groupId 'com.devmind'
-            from components.java
+task sourcesJar(type: Jar) {
+    from sourceSets.main.allJava
+    manifest {
+        from sharedManifest
+    }
+}
 
-            artifact sourceJar {
-                classifier 'sources'
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc
+    manifest {
+        from sharedManifest
+    }
+}
+
+javadoc {
+    source = sourceSets.main.allJava
+    classpath = configurations.compile
+    options.linkSource true
+    options.addBooleanOption('Xdoclint:all,-missing', true)
+}
+
+jar {
+    manifest {
+        from sharedManifest
+    }
+}
+
+artifacts {
+    archives javadocJar, sourcesJar
+}
+
+signing {
+    //required { isReleaseVersion && gradle.taskGraph.hasTask("uploadArchives") }
+    sign configurations.archives
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                authentication(userName: ossrhUsername, password: ossrhPassword)
             }
-        }
-        mavenCustom(MavenPublication) {
-            pom.withXml {
-                asNode().appendNode('description', 'A scriptable web server for testing HTTP clients')
+
+            snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+                authentication(userName: ossrhUsername, password: ossrhPassword)
+            }
+
+            pom.project {
+                name project.name
+                packaging 'jar'
+                // optionally artifactId can be defined here
+                description "A scriptable web server for testing HTTP clients"
+                url 'https://github.com/Dev-Mind/mockwebserver'
+
+                scm {
+                    connection 'scm:git:git://github.com/Dev-Mind/mockwebserver'
+                    developerConnection 'scm:git:git://github.com/Dev-Mind/mockwebserver'
+                    url 'https://github.com/Dev-Mind/mockwebserver'
+                }
+
+                licenses {
+                    license {
+                        name 'The Apache License, Version 2.0'
+                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id 'javamind'
+                        name 'Guillaume EHRET'
+                        email 'guillaume@dev-mind.fr'
+                    }
+                }
             }
         }
     }
