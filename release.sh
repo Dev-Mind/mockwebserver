@@ -1,1 +1,2 @@
-gradle release -Prelease.useAutomaticVersion=true
+./gradlew clean build
+./gradlew release -Prelease.useAutomaticVersion=true
