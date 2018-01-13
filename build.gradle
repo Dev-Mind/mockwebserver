@@ -41,6 +41,9 @@ dependencies {
 }
 
 ext.isReleaseVersion = !version.endsWith("SNAPSHOT")
+ext.ossrhUsername = nexusUsername ? nexusUsername : ""
+ext.ossrhPassword = nexusPassword ? nexusPassword : ""
+
 ext.sharedManifest = manifest {
     attributes(
             "Implementation-Title": project.name,
@@ -130,10 +133,6 @@ uploadArchives {
             }
         }
     }
-}
-
-release {
-    tagTemplate = "${rootProject.name}"+'-${version}'
 }
 
 //afterReleaseBuild.dependsOn uploadArchives
