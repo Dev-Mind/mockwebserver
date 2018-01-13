@@ -41,8 +41,8 @@ dependencies {
 }
 
 ext.isReleaseVersion = !version.endsWith("SNAPSHOT")
-ext.ossrhUsername = nexusUsername ? nexusUsername : ""
-ext.ossrhPassword = nexusPassword ? nexusPassword : ""
+ext.ossrhUsername = hasProperty(ossrhUsername) ? ossrhUsername : ""
+ext.ossrhPassword = hasProperty(ossrhPassword) ? ossrhPassword : ""
 
 ext.sharedManifest = manifest {
     attributes(
