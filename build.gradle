@@ -134,4 +134,4 @@ uploadArchives {
     }
 }
 
-afterReleaseBuild.dependsOn uploadArchives
+//afterReleaseBuild.dependsOn uploadArchives

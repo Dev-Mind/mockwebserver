@@ -1,0 +1,1 @@
+gradle release -Prelease.useAutomaticVersion=true
