@@ -87,8 +87,8 @@ artifacts {
 
 signing {
     required { isReleaseVersion && gradle.taskGraph.hasTask("uploadArchives") }
-    useGpgCmd()
     sign configurations.archives
+    useGpgCmd()
 }
 
 uploadArchives {
